@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Economix</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap">
+<style>
+:root{--bg:#eef4f6;--fg:#10222b;--mut:#546a74;--card:#ffffff;--bd:#d3e0e5;--acc:#0b6e8a;--on:#ffffff;--hi:#ffd23f;--hif:#10222b;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0d1a20;--fg:#e8f1f4;--mut:#93a9b2;--card:#14262e;--bd:#24404b;--acc:#4fc3e0;--on:#06202a;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0d1a20;--fg:#e8f1f4;--mut:#93a9b2;--card:#14262e;--bd:#24404b;--acc:#4fc3e0;--on:#06202a;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 "Bricolage Grotesque",system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:640px;margin:0 auto;padding:28px 16px 40px}
+h1{font-size:2rem;line-height:1.1;font-weight:800;margin:0 0 8px;letter-spacing:-.02em}
+.note{color:var(--mut);margin:0 0 18px}
+#q{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--bd);border-radius:8px;background:var(--card);color:var(--fg)}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:12px 0}
+.chip{flex:none;font:inherit;font-weight:600;font-size:.9rem;padding:7px 13px;border-radius:999px;border:1px solid var(--bd);background:var(--card);color:var(--fg);cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--acc);color:var(--on);border-color:var(--acc)}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+@media (max-width:360px){.grid{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:8px}
+.cat{font-size:.8rem;color:var(--mut)}
+.nm{font-weight:600;overflow-wrap:anywhere;flex:1}
+.pr{align-self:flex-start;background:var(--hi);color:var(--hif);font-weight:800;padding:2px 8px;border-radius:4px}
+.btn{display:block;text-align:center;background:var(--acc);color:var(--on);border:0;border-radius:8px;padding:9px 10px;font:inherit;font-weight:600;text-decoration:none;cursor:pointer}
+.btn:focus-visible,.chip:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--hi);outline-offset:2px}
+.empty{color:var(--mut);padding:18px 0}
+#owner{margin-top:32px;padding:16px;border:2px dashed var(--acc);border-radius:10px;background:var(--card)}
+#owner h2{margin:0 0 10px;font-size:1.1rem}
+#owner label{display:block;font-weight:600;font-size:.9rem;margin:10px 0 4px}
+#owner input,#owner textarea{width:100%;font:inherit;padding:9px;border:1px solid var(--bd);border-radius:6px;background:var(--bg);color:var(--fg)}
+#owner textarea{min-height:170px}
+#owner small{color:var(--mut);display:block;margin-top:3px}
+#msg{margin:10px 0 0;font-size:.9rem}
+</style>
+</head>
+<body>
+<main>
+<div id="app"></div>
+<div id="owner" hidden></div>
+</main>
+<script id="cfg" type="application/json">{"name":"Economix","note":"Pago en bolivianos. Yo hago la compra por ti y te lo entrego rápido.","rate":6.96,"fee":10,"wa":"76464694","products":"Streaming | Netflix (tarjeta de regalo) | 25\nStreaming | HBO Max (suscripción en tu cuenta) | 10\nAnime | Crunchyroll (suscripción en tu cuenta) | 8\nMúsica | Spotify (tarjeta de regalo) | 10\nJuegos | Tarjeta de regalo Steam | 20"}</script>
+<script>
+const cfg=JSON.parse(document.getElementById('cfg').textContent);
+const app=document.getElementById('app');
+let query='',cat='Todo';
+const fmt=n=>'Bs '+n.toLocaleString('es-BO',{minimumFractionDigits:2,maximumFractionDigits:2});
+const price=u=>Math.ceil(u*cfg.rate*(1+cfg.fee/100)*2)/2;
+const parse=t=>t.split('\n').map(l=>l.split('|')).filter(p=>p.length>=3&&p[1].trim()&&!isNaN(parseFloat(p[2]))).map(p=>({c:p[0].trim()||'Otros',n:p[1].trim(),u:parseFloat(p[2])}));
+function el(tag,cls,txt){const e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e}
+function render(){
+  const all=parse(cfg.products);
+  const cats=['Todo',...new Set(all.map(p=>p.c))];
+  if(!cats.includes(cat))cat='Todo';
+  app.innerHTML='';
+  app.append(el('h1','',cfg.name),el('p','note',cfg.note));
+  const q=el('input');q.id='q';q.type='search';q.placeholder='Buscar Netflix, Spotify…';q.value=query;q.setAttribute('aria-label','Buscar');
+  app.append(q);
+  const chips=el('div','chips');
+  cats.forEach(c=>{const b=el('button','chip',c);b.setAttribute('aria-pressed',String(c===cat));b.onclick=()=>{cat=c;render()};chips.append(b)});
+  app.append(chips);
+  const list=all.filter(p=>(cat==='Todo'||p.c===cat)&&p.n.toLowerCase().includes(query.toLowerCase()));
+  const grid=el('div','grid');
+  let num=String(cfg.wa||'').replace(/\D/g,'');
+  if(num.length===8)num='591'+num;
+  list.forEach(p=>{
+    const bs=price(p.u),card=el('div','card');
+    card.append(el('div','cat',p.c),el('div','nm',p.n),el('span','pr',fmt(bs)));
+    if(num){
+      const a=el('a','btn','Pedir por WhatsApp');
+      a.href='https://wa.me/'+num+'?text='+encodeURIComponent('Hola, quiero: '+p.n+' ('+fmt(bs)+')');
+      a.target='_blank';a.rel='noopener';card.append(a);
+    }
+    grid.append(card);
+  });
+  app.append(list.length?grid:el('p','empty',all.length?'No hay productos con esa búsqueda.':'Todavía no hay productos. Agrégalos desde el panel del dueño.'));
+  q.addEventListener('input',()=>{query=q.value;const pos=q.selectionStart;render();const n=document.getElementById('q');n.focus();n.setSelectionRange(pos,pos)});
+}
+function ownerPanel(){
+  const box=document.getElementById('owner');
+  box.hidden=false;box.innerHTML='';
+  const f=(label,id,val,type,hint)=>{
+    const l=el('label','',label);l.htmlFor=id;
+    const i=el(type==='area'?'textarea':'input');i.id=id;
+    if(type!=='area')i.type=type||'text';
+    if(type==='number')i.step='any';
+    i.value=val;box.append(l,i);
+    if(hint)box.append(el('small','',hint));
+    return i;
+  };
+  box.append(el('h2','','Panel del dueño (solo tú lo ves)'));
+  const iName=f('Nombre de la tienda','f-name',cfg.name);
+  const iNote=f('Mensaje bajo el título','f-note',cfg.note);
+  const iRate=f('Tipo de cambio (Bs por 1 USD)','f-rate',cfg.rate,'number');
+  const iFee=f('Tu ganancia (%)','f-fee',cfg.fee,'number','Se suma al precio en dólares antes de pasar a Bs.');
+  const iWa=f('Tu WhatsApp con código de país','f-wa',cfg.wa,'tel','Ejemplo: 59171234567');
+  const iPr=f('Productos (una línea cada uno: categoría | nombre | precio en USD)','f-pr',cfg.products,'area','Los precios que aparecen son de ejemplo: cámbialos por los tuyos.');
+  const live=()=>{
+    cfg.name=iName.value||'Mi tienda';cfg.note=iNote.value;
+    cfg.rate=parseFloat(iRate.value)||0;cfg.fee=parseFloat(iFee.value)||0;
+    cfg.wa=iWa.value;cfg.products=iPr.value;render();
+  };
+  [iName,iNote,iRate,iFee,iWa,iPr].forEach(i=>i.addEventListener('input',live));
+  const btn=el('button','btn','Guardar y publicar');btn.style.marginTop='14px';
+  const msg=el('p','');msg.id='msg';
+  btn.addEventListener('click',async()=>{
+    try{
+      live();
+      const a=await claude.use('artifact');
+      if(!a){msg.textContent='No se pudo guardar desde aquí.';return}
+      const c=document.documentElement.cloneNode(true);
+      c.querySelector('#cfg').textContent=JSON.stringify(cfg).replace(/</g,'\\u003c');
+      c.querySelector('#app').innerHTML='';
+      const o=c.querySelector('#owner');o.innerHTML='';o.hidden=true;
+      msg.textContent='Publicando…';
+      await a.publish('<!doctype html>\n'+c.outerHTML);
+    }catch(e){msg.textContent='No se pudo publicar: '+(e&&e.message?e.message:'error');}
+  });
+  box.append(btn,msg);
+}
+render();
+(async()=>{
+  try{
+    if(!(window.claude&&claude.use))return;
+    const u=await claude.use('user');
+    if(u&&u.canEdit())ownerPanel();
+  }catch(e){}
+})();
+</script>
+</body>
+</html>

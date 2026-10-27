@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Economix</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap">
+<style>
+:root{--bg:#fbf6f3;--fg:#241917;--mut:#7a6a65;--card:#ffffff;--bd:#eadfda;--acc:#e4572e;--on:#ffffff;--hi:#ffd23f;--hif:#241917;--bar:#e4572e;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#171110;--fg:#f4ebe8;--mut:#b3a09a;--card:#231a18;--bd:#3a2c29;--acc:#ff7a52;--on:#2a0d04;--bar:#b93d1c;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#171110;--fg:#f4ebe8;--mut:#b3a09a;--card:#231a18;--bd:#3a2c29;--acc:#ff7a52;--on:#2a0d04;--bar:#b93d1c;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.45 "Bricolage Grotesque",system-ui,-apple-system,"Segoe UI",sans-serif}
+header{background:var(--bar);color:#fff;padding:14px 16px 16px;border-radius:0 0 22px 22px}
+.hw{max-width:640px;margin:0 auto}
+header h1{margin:0 0 10px;font-size:1.7rem;font-weight:800;letter-spacing:-.02em;line-height:1.1}
+#q{width:100%;font:inherit;padding:11px 14px;border:0;border-radius:999px;background:#fff;color:#241917}
+main{max-width:640px;margin:0 auto;padding:18px 16px 40px}
+.note{color:var(--mut);margin:0 0 6px}
+h2{font-size:1.35rem;font-weight:800;margin:22px 0 12px;letter-spacing:-.01em}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+@media (max-width:340px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:8px;display:flex;flex-direction:column;gap:6px}
+.tile{aspect-ratio:1/1;border-radius:10px;display:flex;align-items:center;justify-content:center;text-align:center;padding:8px;color:#fff;font-weight:800;font-size:1.05rem;line-height:1.15;overflow-wrap:anywhere}
+.nm{font-weight:600;font-size:.92rem;line-height:1.2;overflow-wrap:anywhere}
+.dt{font-size:.75rem;color:var(--mut);line-height:1.25;flex:1;overflow-wrap:anywhere}
+.pr{align-self:flex-start;background:var(--hi);color:var(--hif);font-weight:800;font-size:.85rem;padding:1px 7px;border-radius:4px}
+.btn{display:block;text-align:center;background:var(--acc);color:var(--on);border:0;border-radius:8px;padding:7px 6px;font:inherit;font-weight:600;font-size:.9rem;text-decoration:none;cursor:pointer}
+.more{display:block;width:100%;margin-top:12px;padding:12px;border:0;border-radius:999px;background:var(--card);color:var(--fg);font:inherit;font-weight:600;border:1px solid var(--bd);cursor:pointer}
+.btn:focus-visible,.more:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--hi);outline-offset:2px}
+.empty{color:var(--mut);padding:18px 0}
+#owner{max-width:640px;margin:0 auto 40px;padding:16px;border:2px dashed var(--acc);border-radius:10px;background:var(--card)}
+#owner h2{margin:0 0 10px;font-size:1.1rem}
+#owner label{display:block;font-weight:600;font-size:.9rem;margin:10px 0 4px}
+#owner input,#owner textarea{width:100%;font:inherit;padding:9px;border:1px solid var(--bd);border-radius:6px;background:var(--bg);color:var(--fg)}
+#owner textarea{min-height:170px}
+#owner small{color:var(--mut);display:block;margin-top:3px}
+#msg{margin:10px 0 0;font-size:.9rem}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="owner" hidden></div>
+<script id="cfg" type="application/json">{"name":"Economix","note":"Pago en bolivianos. Yo hago la compra por ti y te lo entrego rápido.","rate":6.96,"fee":10,"wa":"76464694","products":"Streaming | Netflix (tarjeta de regalo) | 25\nStreaming | HBO Max (suscripción en tu cuenta) | 10\nAnime | Crunchyroll (suscripción en tu cuenta) | 8\nMúsica | Spotify (tarjeta de regalo) | 10\nJuegos | Tarjeta de regalo Steam | 20"}</script>
+<script>
+const cfg=JSON.parse(document.getElementById('cfg').textContent);
+const app=document.getElementById('app');
+const LIMIT=6,open=new Set();let query='';
+const GR=[['#e4572e','#ff9966'],['#6a4cff','#a78bfa'],['#0b8f6b','#4fd1a5'],['#d6336c','#ff8fab'],['#1c7ed6','#74c0fc'],['#f08c00','#ffd43b'],['#2b2b3c','#5c5c80']];
+const fmt=n=>'Bs '+n.toLocaleString('es-BO',{minimumFractionDigits:2,maximumFractionDigits:2});
+const price=u=>Math.ceil(u*cfg.rate*(1+cfg.fee/100)*2)/2;
+const parse=t=>t.split('\n').map(l=>l.split('|')).filter(p=>p.length>=3&&p[1].trim()&&!isNaN(parseFloat(p[2]))).map(p=>({c:p[0].trim()||'Otros',n:p[1].trim(),u:parseFloat(p[2])}));
+const hash=s=>[...s].reduce((a,c)=>(a*31+c.charCodeAt(0))>>>0,7);
+function el(tag,cls,txt){const e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e}
+function card(p,num){
+  const main=p.n.replace(/\s*\(.*\)\s*$/,'')||p.n,m=p.n.match(/\((.*)\)\s*$/),bs=price(p.u);
+  const g=GR[hash(main)%GR.length],c=el('div','card');
+  const t=el('div','tile',main);t.style.background='linear-gradient(135deg,'+g[0]+','+g[1]+')';
+  c.append(t,el('div','nm',main),el('div','dt',m?m[1]:''),el('span','pr',fmt(bs)));
+  if(num){const a=el('a','btn','Pedir');a.href='https://wa.me/'+num+'?text='+encodeURIComponent('Hola, quiero: '+p.n+' ('+fmt(bs)+')');a.target='_blank';a.rel='noopener';c.append(a)}
+  return c;
+}
+function render(){
+  const all=parse(cfg.products);
+  let num=String(cfg.wa||'').replace(/\D/g,'');if(num.length===8)num='591'+num;
+  app.innerHTML='';
+  const h=el('header'),w=el('div','hw');
+  const q=el('input');q.id='q';q.type='search';q.placeholder='Buscar Netflix, Spotify…';q.value=query;q.setAttribute('aria-label','Buscar');
+  w.append(el('h1','',cfg.name),q);h.append(w);
+  const m=el('main');m.append(el('p','note',cfg.note));
+  const list=all.filter(p=>p.n.toLowerCase().includes(query.toLowerCase()));
+  if(!list.length)m.append(el('p','empty',all.length?'No hay productos con esa búsqueda.':'Todavía no hay productos. Agrégalos desde el panel del dueño.'));
+  [...new Set(list.map(p=>p.c))].forEach(cat=>{
+    const items=list.filter(p=>p.c===cat),show=open.has(cat)||query?items:items.slice(0,LIMIT);
+    m.append(el('h2','',cat));
+    const grid=el('div','grid');show.forEach(p=>grid.append(card(p,num)));m.append(grid);
+    if(!query&&items.length>LIMIT){const b=el('button','more',open.has(cat)?'Ver menos':'Ver más');b.onclick=()=>{open.has(cat)?open.delete(cat):open.add(cat);render()};m.append(b)}
+  });
+  app.append(h,m);
+  q.addEventListener('input',()=>{query=q.value;const pos=q.selectionStart;render();const n=document.getElementById('q');n.focus();n.setSelectionRange(pos,pos)});
+}
+function ownerPanel(){
+  const box=document.getElementById('owner');
+  box.hidden=false;box.innerHTML='';
+  const f=(label,id,val,type,hint)=>{
+    const l=el('label','',label);l.htmlFor=id;
+    const i=el(type==='area'?'textarea':'input');i.id=id;
+    if(type!=='area')i.type=type||'text';
+    if(type==='number')i.step='any';
+    i.value=val;box.append(l,i);
+    if(hint)box.append(el('small','',hint));
+    return i;
+  };
+  box.append(el('h2','','Panel del dueño (solo tú lo ves)'));
+  const iName=f('Nombre de la tienda','f-name',cfg.name);
+  const iNote=f('Mensaje bajo el título','f-note',cfg.note);
+  const iRate=f('Tipo de cambio (Bs por 1 USD)','f-rate',cfg.rate,'number');
+  const iFee=f('Tu ganancia (%)','f-fee',cfg.fee,'number','Se suma al precio en dólares antes de pasar a Bs.');
+  const iWa=f('Tu WhatsApp con código de país','f-wa',cfg.wa,'tel','Ejemplo: 59171234567');
+  const iPr=f('Productos (una línea cada uno: categoría | nombre (detalle) | precio en USD)','f-pr',cfg.products,'area','Lo que va entre paréntesis sale como detalle. Los precios son de ejemplo: cámbialos por los tuyos.');
+  const live=()=>{
+    cfg.name=iName.value||'Mi tienda';cfg.note=iNote.value;
+    cfg.rate=parseFloat(iRate.value)||0;cfg.fee=parseFloat(iFee.value)||0;
+    cfg.wa=iWa.value;cfg.products=iPr.value;render();
+  };
+  [iName,iNote,iRate,iFee,iWa,iPr].forEach(i=>i.addEventListener('input',live));
+  const btn=el('button','btn','Guardar y publicar');btn.style.marginTop='14px';
+  const msg=el('p','');msg.id='msg';
+  btn.addEventListener('click',async()=>{
+    try{
+      live();
+      const a=await claude.use('artifact');
+      if(!a){msg.textContent='No se pudo guardar desde aquí.';return}
+      const c=document.documentElement.cloneNode(true);
+      c.querySelector('#cfg').textContent=JSON.stringify(cfg).replace(/</g,'\\u003c');
+      c.querySelector('#app').innerHTML='';
+      const o=c.querySelector('#owner');o.innerHTML='';o.hidden=true;
+      msg.textContent='Publicando…';
+      await a.publish('<!doctype html>\n'+c.outerHTML);
+    }catch(e){msg.textContent='No se pudo publicar: '+(e&&e.message?e.message:'error');}
+  });
+  box.append(btn,msg);
+}
+render();
+(async()=>{
+  try{
+    if(!(window.claude&&claude.use))return;
+    const u=await claude.use('user');
+    if(u&&u.canEdit())ownerPanel();
+  }catch(e){}
+})();
+</script>
+</body>
+</html>
